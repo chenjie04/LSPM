@@ -19,8 +19,8 @@ from torch import multiprocessing as mp
 import utils
 from LSPM import Long_and_Short_term_Preference_Model
 from dataset import CFTrainDataset, load_test_ratings, load_test_negs
-from convert import (TEST_NEG_FILENAME, TEST_RATINGS_FILENAME,
-                     TRAIN_RATINGS_FILENAME)
+from data_preprocess import (TEST_NEG_FILENAME, TEST_RATINGS_FILENAME,
+                             TRAIN_RATINGS_FILENAME)
 
 from mlperf_compliance import mlperf_log
 
@@ -160,7 +160,7 @@ def val_epoch(model, ratings, negs, K, use_cuda=True, output=None, epoch=None,
 
 
 def main():
-    # Note: The run start is in convert.py
+    # Note: The run start is in data_preprocess.py
 
     args = parse_args()
     if args.seed is not None:
