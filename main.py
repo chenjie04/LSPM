@@ -17,7 +17,7 @@ import torch.nn as nn
 from torch import multiprocessing as mp
 
 import utils
-from CNCF import ContextCF
+from LSPM import Long_and_Short_term_Preference_Model
 from dataset import CFTrainDataset, load_test_ratings, load_test_negs
 from convert import (TEST_NEG_FILENAME, TEST_RATINGS_FILENAME,
                      TRAIN_RATINGS_FILENAME)
@@ -31,7 +31,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 def parse_args():
     parser = ArgumentParser(description="Train a Nerual Collaborative"
                                         " Filtering model")
-    parser.add_argument('--data', type=str, default='data/taobao',
+    parser.add_argument('--data', type=str, default='data/ml-1m',
                         help='path to test and training data files')
     parser.add_argument('-e', '--epochs', type=int, default=20,
                         help='number of epochs for training')
@@ -72,6 +72,7 @@ def predict(model, users, items, history, batch_size=1024, use_cuda=True):
             return torch.autograd.Variable(x)
 
         outp, _ = model(proc(user), proc(item), proc(_history), sigmoid=True)
+
         outp = outp.data.cpu().numpy()
         preds += list(outp.flatten())
     return preds
@@ -167,11 +168,13 @@ def main():
         torch.manual_seed(args.seed)
         np.random.seed(seed=args.seed)
 
+
     # Save configuration to file
+    dataset = os.path.basename(os.path.normpath(args.data))
     config = {k: v for k, v in args.__dict__.items()}
     config['timestamp'] = "{:.0f}".format(datetime.utcnow().timestamp())
     config['local_timestamp'] = str(datetime.now())
-    run_dir = "./run/ancf_taobao/{}".format(config['timestamp'])
+    run_dir = "./run/"+ dataset+"/{}".format(config['timestamp'])
     print("Saving config and results to {}".format(run_dir))
     if not os.path.exists(run_dir) and run_dir != '':
         os.makedirs(run_dir)
@@ -205,7 +208,7 @@ def main():
              len(test_ratings)))
 
     # Create model
-    model = ContextCF(nb_users=nb_users, nb_items=nb_items,
+    model = Long_and_Short_term_Preference_Model(nb_users=nb_users, nb_items=nb_items,
                       embed_dim=64,mlp_layer_sizes=args.layers,mlp_layer_regs=[0. for i in args.layers])
     print(model)
     print("{} parameters".format(utils.count_parameters(model)))
@@ -234,41 +237,7 @@ def main():
         criterion = criterion.cuda()
 
     # Create files for tracking training
-    valid_results_file = os.path.join(run_dir, 'ancf_taobao_valid_results.csv')
-
-    # ############################################################################################################
-    #
-    # #Attention visualization
-    # instances = random.sample(test_ratings,10)
-    # df_instances = pd.DataFrame(instances)
-    # user = df_instances.iloc[:,[0]]
-    # item = df_instances.iloc[:,[1]]
-    # _history = df_instances.iloc[:,2:]
-    #
-    #
-    #
-    # def proc(x):
-    #     x = np.array(x, dtype=int)
-    #     x = torch.from_numpy(x)
-    #     if use_cuda:
-    #         x = x.contiguous().cuda(async=True).squeeze()
-    #     return torch.autograd.Variable(x)
-    #
-    # _, weights = model(proc(user), proc(item), proc(_history), sigmoid=True)
-    #
-    # weights = weights.squeeze().detach()
-    #
-    # sns.set()
-    # heatmap = sns.heatmap(weights,annot=True, fmt="f")
-    # plt.show()
-    #
-    #
-    #
-    #
-    # ############################################################################################################
-
-
-
+    valid_results_file = os.path.join(run_dir, 'valid_results.csv')
 
     # Calculate initial Hit Ratio and NDCG
 

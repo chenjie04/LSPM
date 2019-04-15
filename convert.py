@@ -8,6 +8,8 @@ import pandas as pd
 from tqdm import tqdm
 import random
 
+from load import implicit_load
+
 from mlperf_compliance import mlperf_log
 
 
@@ -22,15 +24,15 @@ TRAIN_RATINGS_FILENAME = 'train_ratings.csv'
 TEST_RATINGS_FILENAME = 'test_ratings.csv'
 TEST_NEG_FILENAME = 'test_negative.csv'
 
-PATH = 'data/'
-OUTPUT = 'data/'
+PATH = 'data/ml-1m'
+OUTPUT = 'data/ml-1m'
 NEGATIVES = 99
 HISTORY_SIZE = 9
 RANDOM_SEED = 0
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--file', type=str, default=(os.path.join(PATH,'UserBehavior.csv')),
+    parser.add_argument('--file', type=str, default=(os.path.join(PATH,'ratings.csv')),
                         help='Path to reviews CSV file from MovieLens')
     parser.add_argument('--output', type=str, default=OUTPUT,
                         help='Output directory for train and test CSV files')
@@ -49,10 +51,11 @@ def main():
     np.random.seed(args.seed)
 
     print("Loading raw data from {}".format(args.file))
-    df = pd.read_csv(args.file,sep=',',header=None)
-    df.columns = ['user_id','item_id','category_id','behavior','timestamp']
-    print(df)
-    df = df.sample(frac=0.1) # we only use 10% data
+    df = implicit_load(args.file, sort=False)
+    # df = pd.read_csv(args.file,sep=',',header=None)
+    # df.columns = ['user_id','item_id','rating','timestamp']
+    # print(df)
+    # df = df.sample(frac=0.1) # we only use 10% data
 
     print("Filtering out users with less than {} ratings".format(MIN_RATINGS))
     grouped = df.groupby(USER_COLUMN)
@@ -72,7 +75,7 @@ def main():
     df[USER_COLUMN] = df[USER_COLUMN].apply(lambda user: user_map[user])
     df[ITEM_COLUMN] = df[ITEM_COLUMN].apply(lambda item: item_map[item])
 
-    print(df)
+    # print(df)
 
 
     assert df[USER_COLUMN].max() == len(original_users) - 1
