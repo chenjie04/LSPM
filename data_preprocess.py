@@ -10,7 +10,6 @@ import random
 
 from load import implicit_load
 
-from mlperf_compliance import mlperf_log
 
 MIN_RATINGS = 20
 
@@ -31,13 +30,12 @@ RANDOM_SEED = 0
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--file', type=str, default=(os.path.join(PATH,'ratings.csv')),
+    parser.add_argument('--file', type=str, default=(os.path.join(PATH,'ratings.dat')),
                         help='Path to reviews CSV file from MovieLens')
     parser.add_argument('--output', type=str, default=OUTPUT,
                         help='Output directory for train and test CSV files')
     parser.add_argument('-n', '--negatives', type=int, default=NEGATIVES,
-                        help='Number of negative samples for each positive'
-                             'test example')
+                        help='Number of negative samples for each positive test example')
     parser.add_argument('--history_size',type=int,default=HISTORY_SIZE,
                         help='The size of history')
     parser.add_argument('-s', '--seed', type=int, default=RANDOM_SEED,
@@ -49,16 +47,12 @@ def main():
     args = parse_args()
     np.random.seed(args.seed)
 
-    print("Loading raw data from {}".format(args.file))
+    print("\nLoading raw data from {}\n".format(args.file))
     df = implicit_load(args.file, sort=False)
-    # df = pd.read_csv(args.file,sep=',',header=None)
-    # df.columns = ['user_id','item_id','rating','timestamp']
-    # print(df)
-    # df = df.sample(frac=0.1) # we only use 10% data
 
-    print("Filtering out users with less than {} ratings".format(MIN_RATINGS))
+
+    print("\nFiltering out users with less than {} ratings".format(MIN_RATINGS))
     grouped = df.groupby(USER_COLUMN)
-    mlperf_log.ncf_print(key=mlperf_log.PREPROC_HP_MIN_RATINGS, value=MIN_RATINGS)
     df = grouped.filter(lambda x: len(x) >= MIN_RATINGS)
 
     print("Mapping original user and item IDs to new sequential IDs")
@@ -74,7 +68,6 @@ def main():
     df[USER_COLUMN] = df[USER_COLUMN].apply(lambda user: user_map[user])
     df[ITEM_COLUMN] = df[ITEM_COLUMN].apply(lambda item: item_map[item])
 
-    # print(df)
 
 
     assert df[USER_COLUMN].max() == len(original_users) - 1
@@ -89,10 +82,6 @@ def main():
     for row in tqdm(df.itertuples(), desc='Ratings', total=len(df)):
         user_to_items[getattr(row, USER_COLUMN)].append(getattr(row, ITEM_COLUMN))  # noqa: E501
 
-    print(len(user_to_items[0]))
-    print(user_to_items[0])
-    print(user_to_items[0][-args.history_size:])
-
 
     train_ratings = []
     test_ratings = []
@@ -101,16 +90,7 @@ def main():
 
     print("Generating {} negative samples for each user and creating training set"
           .format(args.negatives))
-    mlperf_log.ncf_print(key=mlperf_log.PREPROC_HP_NUM_EVAL, value=args.negatives)
-
-    # The default of np.random.choice is replace=True
-    mlperf_log.ncf_print(key=mlperf_log.PREPROC_HP_SAMPLE_EVAL_REPLACEMENT, value=True)
-
-    #===========================================================================
-    #== First random operation triggers the clock start. =======================
-    #===========================================================================
-    mlperf_log.ncf_print(key=mlperf_log.RUN_START)
-    mlperf_log.ncf_print(key=mlperf_log.INPUT_STEP_EVAL_NEG_GEN)
+    
 
     for user in tqdm(range(len(original_users)), desc='Users', total=len(original_users)):  # noqa: E501
         all_negs = all_items - set(user_to_items[user])
@@ -155,7 +135,6 @@ def main():
     df_train_ratings.to_csv(os.path.join(args.output, TRAIN_RATINGS_FILENAME),
                             index=False, header=False, sep='\t')
 
-    mlperf_log.ncf_print(key=mlperf_log.INPUT_SIZE, value=len(df_train_ratings))
 
     df_test_ratings = pd.DataFrame(test_ratings)
     df_test_ratings['fake_rating'] = 1
@@ -165,6 +144,8 @@ def main():
     df_test_negs = pd.DataFrame(test_negs)
     df_test_negs.to_csv(os.path.join(args.output, TEST_NEG_FILENAME),
                         index=False, header=False, sep='\t')
+
+    print("Data preprocess done!\n")
 
 
 

@@ -3,8 +3,7 @@ from collections import namedtuple
 import pandas as pd
 
 
-RatingData = namedtuple('RatingData',
-                        ['items', 'users', 'ratings', 'min_date', 'max_date'])
+RatingData = namedtuple('RatingData', ['items', 'users', 'ratings', 'min_date', 'max_date'])
 
 
 def describe_ratings(ratings):
