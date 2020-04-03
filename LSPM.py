@@ -8,43 +8,44 @@ from mlperf_compliance import mlperf_log
 
 
 class Long_and_Short_term_Preference_Model(nn.Module):
-    def __init__(self, nb_users, nb_items,
-                 embed_dim,
-                 mlp_layer_sizes, mlp_layer_regs):
+    def __init__(self, nb_users, nb_items, embed_dim, mlp_layer_sizes, mlp_layer_regs):
+
         if len(mlp_layer_sizes) != len(mlp_layer_regs):
             raise RuntimeError('u dummy, layer_sizes != layer_regs!')
         if mlp_layer_sizes[0] % 2 != 0:
             raise RuntimeError('u dummy, mlp_layer_sizes[0] % 2 != 0')
+
         super(Long_and_Short_term_Preference_Model, self).__init__()
-        nb_mlp_layers = len(mlp_layer_sizes)
 
+        self.nb_users = nb_users
+        self.nb_items = nb_items
+        self.embed_dim = embed_dim
+        self.nb_mlp_layers = len(mlp_layer_sizes)
+        self.mlp_layer_regs = mlp_layer_regs
 
-        mlperf_log.ncf_print(key=mlperf_log.MODEL_HP_MF_DIM)
+        #user and item embedding
+        self.user_embed = nn.Embedding(nb_users, embed_dim)
+        self.item_embed = nn.Embedding(nb_items, embed_dim)
+        self.user_embed.weight.data.normal_(0., 0.01)
+        self.item_embed.weight.data.normal_(0., 0.01)
 
-        # TODO: regularization?
+        #LSTM
+        self.lstm = nn.LSTM(self.embed_dim, self.embed_dim)
 
-        self.mlp_user_embed = nn.Embedding(nb_users, embed_dim)
-        self.mlp_item_embed = nn.Embedding(nb_items, embed_dim)
+        #self-attention
+        self.W_s2 = nn.Linear(embed_dim, 256, bias=True)
+        self.W_s1 = nn.Linear(256, 1, bias=True)
 
-        mlperf_log.ncf_print(key=mlperf_log.MODEL_HP_MLP_LAYER_SIZES, value=mlp_layer_sizes)
+        #MLP
         self.mlp0 = nn.Linear(embed_dim*2,mlp_layer_sizes[0])
         self.mlp = nn.ModuleList()
         for i in range(1, nb_mlp_layers):
             self.mlp.extend([nn.Linear(mlp_layer_sizes[i - 1], mlp_layer_sizes[i])])  # noqa: E501
 
-
-        self.history_embed = nn.Embedding(nb_items, embed_dim)
-
-        self.lstm = nn.LSTM(embed_dim, embed_dim)
-        self.W_s2 = nn.Linear(embed_dim, 256, bias=True)
-        self.W_s1 = nn.Linear(256, 1, bias=True)
-
+        #output
         self.merge = nn.Linear(mlp_layer_sizes[-1] * 2, mlp_layer_sizes[-1])
         self.final = nn.Linear(mlp_layer_sizes[-1], 1)
 
-
-        self.mlp_user_embed.weight.data.normal_(0., 0.01)
-        self.mlp_item_embed.weight.data.normal_(0., 0.01)
 
         def golorot_uniform(layer):
             fan_in, fan_out = layer.in_features, layer.out_features
@@ -59,13 +60,15 @@ class Long_and_Short_term_Preference_Model(nn.Module):
             if type(layer) != nn.Linear:
                 continue
             golorot_uniform(layer)
+
+        lecunn_uniform(self.merge)
         lecunn_uniform(self.final)
 
     def forward(self, user, item, history,sigmoid=False):
 
         #****************** Long-term preference module impleted by MLP module *****************************
-        xmlpu = self.mlp_user_embed(user)
-        xmlpi = self.mlp_item_embed(item)
+        xmlpu = self.user_embed(user)
+        xmlpi = self.item_embed(item)
 
         xmlp = torch.cat((xmlpu, xmlpi), dim=1)
         xmlp = self.mlp0(xmlp)
@@ -76,8 +79,8 @@ class Long_and_Short_term_Preference_Model(nn.Module):
 
         #******************************* Short-term preference module ***************************************
         #RNN module
-        xhistory = self.history_embed(history)
-        x_h_i = self.history_embed(item)
+        xhistory = self.item_embed(history)
+        x_h_i = self.item_embed(item)
 
         xhistory = xhistory.transpose(0,1)
         lstm_out, lstm_hidden = self.lstm(xhistory)

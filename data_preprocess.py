@@ -12,7 +12,6 @@ from load import implicit_load
 
 from mlperf_compliance import mlperf_log
 
-
 MIN_RATINGS = 20
 
 

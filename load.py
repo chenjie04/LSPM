@@ -27,30 +27,11 @@ def process_movielens(ratings, sort=True):
     return ratings
 
 
-def load_ml_100k(filename, sort=True):
-    names = ['user_id', 'item_id', 'rating', 'timestamp']
-    ratings = pd.read_csv(filename, sep='\t', names=names)
-    return process_movielens(ratings, sort=sort)
-
-
 def load_ml_1m(filename, sort=True):
     names = ['user_id', 'item_id', 'rating', 'timestamp']
     ratings = pd.read_csv(filename, sep='::', names=names, engine='python')
     return process_movielens(ratings, sort=sort)
 
-
-def load_ml_10m(filename, sort=True):
-    names = ['user_id', 'item_id', 'rating', 'timestamp']
-    ratings = pd.read_csv(filename, sep='::', names=names, engine='python')
-    return process_movielens(ratings, sort=sort)
-
-
-def load_ml_20m(filename, sort=True):
-    ratings = pd.read_csv(filename)
-    ratings['timestamp'] = pd.to_datetime(ratings['timestamp'], unit='s')
-    names = {'userId': 'user_id', 'movieId': 'item_id'}
-    ratings.rename(columns=names, inplace=True)
-    return process_movielens(ratings, sort=sort)
 
 
 DATASETS = [k.replace('load_', '') for k in locals().keys() if "load_" in k]

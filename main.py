@@ -56,6 +56,8 @@ def parse_args():
                         help='Number of processes for evaluating model')
     parser.add_argument('--workers', '-w', type=int, default=4,
                         help='Number of workers for training DataLoader')
+    parser.add_argument('--resume', '-r',action='store_true', default=False,
+                        help='resume from checkpoint')
     return parser.parse_args()
 
 
@@ -174,7 +176,7 @@ def main():
     config = {k: v for k, v in args.__dict__.items()}
     config['timestamp'] = "{:.0f}".format(datetime.utcnow().timestamp())
     config['local_timestamp'] = str(datetime.now())
-    run_dir = "./run/"+ dataset+"/{}".format(config['timestamp'])
+    run_dir = "./run/LSPM/{}/{}".format(os.path.basename(os.path.normpath(args.data)),config['timestamp'])
     print("Saving config and results to {}".format(run_dir))
     if not os.path.exists(run_dir) and run_dir != '':
         os.makedirs(run_dir)
@@ -235,6 +237,17 @@ def main():
         # Move model and loss to GPU
         model = model.cuda()
         criterion = criterion.cuda()
+
+    if args.resume:
+        # Load checkpoint.
+        print('==> Resuming from checkpoint..')
+        assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
+        checkpoint = torch.load(run_dir + model._get_name() + '.pd')
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch']
+        best_hit = checkpoint['hit']
+        best_ndcg = checkpoint['ndcg']
 
     # Create files for tracking training
     valid_results_file = os.path.join(run_dir, 'valid_results.csv')
@@ -304,41 +317,6 @@ def main():
 
     mlperf_log.ncf_print(key=mlperf_log.RUN_STOP)
     mlperf_log.ncf_print(key=mlperf_log.RUN_FINAL)
-
-    ############################################################################################################
-
-    #Attention visualization
-    instances = random.sample(test_ratings,10)
-    df_instances = pd.DataFrame(instances)
-    user = df_instances.iloc[:,[0]]
-    item = df_instances.iloc[:,[1]]
-    _history = df_instances.iloc[:,2:]
-
-
-
-    def proc(x):
-        x = np.array(x, dtype=int)
-        x = torch.from_numpy(x)
-        if use_cuda:
-            x = x.contiguous().cuda(async=True).squeeze()
-        return torch.autograd.Variable(x)
-
-    _, weights = model(proc(user), proc(item), proc(_history), sigmoid=True)
-
-    weights = weights.squeeze().detach()
-    # weights = np.round(weights,decimals=1)
-    print(weights)
-
-    sns.set()
-    heatmap = sns.heatmap(weights,annot=True,cmap='Wistia',fmt='f')
-    plt.show()
-
-
-
-
-    ############################################################################################################
-
-
 
 
 
