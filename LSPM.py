@@ -39,7 +39,7 @@ class Long_and_Short_term_Preference_Model(nn.Module):
         #MLP
         self.mlp0 = nn.Linear(embed_dim*2,mlp_layer_sizes[0])
         self.mlp = nn.ModuleList()
-        for i in range(1, nb_mlp_layers):
+        for i in range(1, self.nb_mlp_layers):
             self.mlp.extend([nn.Linear(mlp_layer_sizes[i - 1], mlp_layer_sizes[i])])  # noqa: E501
 
         #output

@@ -10,7 +10,6 @@ import random
 import tqdm
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -25,7 +24,7 @@ from data_preprocess import (TEST_NEG_FILENAME, TEST_RATINGS_FILENAME,
 from mlperf_compliance import mlperf_log
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 
 def parse_args():
@@ -35,7 +34,7 @@ def parse_args():
                         help='path to test and training data files')
     parser.add_argument('-e', '--epochs', type=int, default=20,
                         help='number of epochs for training')
-    parser.add_argument('-b', '--batch-size', type=int, default=2048,
+    parser.add_argument('-b', '--batch-size', type=int, default=1024,
                         help='number of examples for each iteration')
     parser.add_argument('-f', '--factors', type=int, default=64,
                         help='number of predictive factors')
